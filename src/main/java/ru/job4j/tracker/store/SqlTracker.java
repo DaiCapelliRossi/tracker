@@ -2,6 +2,7 @@ package ru.job4j.tracker.store;
 
 import ru.job4j.tracker.model.Item;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.sql.*;
 import java.util.ArrayList;
@@ -21,8 +22,7 @@ public class SqlTracker implements Store {
     }
 
     private void init() {
-        try (InputStream in = SqlTracker.class.getClassLoader()
-                .getResourceAsStream("db/liquibase.properties")) {
+        try (InputStream in = new FileInputStream("db/liquibase.properties")) {
             Properties config = new Properties();
             config.load(in);
             Class.forName(config.getProperty("driver-class-name"));
@@ -49,9 +49,9 @@ public class SqlTracker implements Store {
             statement.setString(1, item.getName());
             statement.setTimestamp(2, new java.sql.Timestamp(new java.util.Date().getTime()));
             statement.execute();
-            try (ResultSet generetadeKeys = statement.getGeneratedKeys()){
-                if (generetadeKeys.next()) {
-                    item.setId(generetadeKeys.getInt(1));
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()){
+                if (generatedKeys.next()) {
+                    item.setId(generatedKeys.getInt(1));
                 }
             }
         } catch (Exception e) {
@@ -66,6 +66,7 @@ public class SqlTracker implements Store {
         try (PreparedStatement statement = cn.prepareStatement("UPDATE items SET name = ?  WHERE id = ?")){
             statement.setString(1, item.getName());
             statement.setInt(2, id);
+            item.setId(id);
             result = statement.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
@@ -104,7 +105,7 @@ public class SqlTracker implements Store {
     public List<Item> findByName(String key) {
         List<Item> items = new ArrayList<>();
         try (PreparedStatement statement = cn.prepareStatement("SELECT * FROM items WHERE name LIKE ?")){
-            statement.setString(1, "%" + key + "%");
+            statement.setString(1, key);
             try (ResultSet resultSet = statement.executeQuery()){
                 while (resultSet.next()) {
                     items.add(new Item(resultSet.getInt("id"), resultSet.getString("name")));
